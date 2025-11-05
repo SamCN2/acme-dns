@@ -251,6 +251,41 @@ func TestApiUpdateWithInvalidTxt(t *testing.T) {
 		ValueEqual("error", "bad_txt")
 }
 
+func TestApiUpdateWithVariousLengthTxt(t *testing.T) {
+	updateJSON := map[string]interface{}{
+		"subdomain": "",
+		"txt":       ""}
+
+	router := setupRouter(false, false)
+	server := httptest.NewServer(router)
+	defer server.Close()
+	e := getExpect(t, server)
+	newUser, err := DB.Register(cidrslice{})
+	if err != nil {
+		t.Errorf("Could not create new user, got error [%v]", err)
+	}
+	updateJSON["subdomain"] = newUser.Subdomain
+
+	// Test with various length txt data
+	for _, length := range []int{1, 10, 43, 128} {
+		txtData := ""
+		for i := 0; i < length; i++ {
+			txtData += "a"
+		}
+		updateJSON["txt"] = txtData
+		e.POST("/update").
+			WithJSON(updateJSON).
+			WithHeader("X-Api-User", newUser.Username.String()).
+			WithHeader("X-Api-Key", newUser.Password).
+			Expect().
+			Status(http.StatusOK).
+			JSON().Object().
+			ContainsKey("txt").
+			NotContainsKey("error").
+			ValueEqual("txt", txtData)
+	}
+}
+
 func TestApiUpdateWithoutCredentials(t *testing.T) {
 	router := setupRouter(false, false)
 	server := httptest.NewServer(router)

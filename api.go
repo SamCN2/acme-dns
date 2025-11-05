@@ -54,16 +54,16 @@ func webRegisterPost(w http.ResponseWriter, r *http.Request, _ httprouter.Params
 		errstr := fmt.Sprintf("%v", err)
 		reg = jsonError(errstr)
 		regStatus = http.StatusInternalServerError
-		log.WithFields(log.Fields{"error": err.Error()}).Debug("Error in registration")
+		log.WithFields(log.Fields{"error": err.Error()}).Info("Error in registration")
 	} else {
-		log.WithFields(log.Fields{"user": nu.Username.String()}).Debug("Created new user")
+		log.WithFields(log.Fields{"user": nu.Username.String()}).Info("Created new user")
 		regStruct := RegResponse{nu.Username.String(), nu.Password, nu.Subdomain + "." + Config.General.Domain, nu.Subdomain, nu.AllowFrom.ValidEntries()}
 		regStatus = http.StatusCreated
 		reg, err = json.Marshal(regStruct)
 		if err != nil {
 			regStatus = http.StatusInternalServerError
 			reg = jsonError("json_error")
-			log.WithFields(log.Fields{"error": "json"}).Debug("Could not marshal JSON")
+			log.WithFields(log.Fields{"error": "json"}).Error("Could not marshal JSON")
 		}
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -83,21 +83,21 @@ func webUpdatePost(w http.ResponseWriter, r *http.Request, _ httprouter.Params) 
 	// reject POSTs with an invalid subdomain before this handler. Reject any
 	// invalid subdomains anyway as a matter of caution.
 	if !validSubdomain(a.Subdomain) {
-		log.WithFields(log.Fields{"error": "subdomain", "subdomain": a.Subdomain, "txt": a.Value}).Debug("Bad update data")
+		log.WithFields(log.Fields{"error": "subdomain", "subdomain": a.Subdomain, "txt": a.Value}).Info("Bad update data")
 		updStatus = http.StatusBadRequest
 		upd = jsonError("bad_subdomain")
 	} else if !validTXT(a.Value) {
-		log.WithFields(log.Fields{"error": "txt", "subdomain": a.Subdomain, "txt": a.Value}).Debug("Bad update data")
+		log.WithFields(log.Fields{"error": "txt", "subdomain": a.Subdomain, "txt": a.Value}).Info("Bad update data")
 		updStatus = http.StatusBadRequest
 		upd = jsonError("bad_txt")
 	} else if validSubdomain(a.Subdomain) && validTXT(a.Value) {
 		err := DB.Update(a.ACMETxtPost)
 		if err != nil {
-			log.WithFields(log.Fields{"error": err.Error()}).Debug("Error while trying to update record")
+			log.WithFields(log.Fields{"error": err.Error()}).Error("Error while trying to update record")
 			updStatus = http.StatusInternalServerError
 			upd = jsonError("db_error")
 		} else {
-			log.WithFields(log.Fields{"subdomain": a.Subdomain, "txt": a.Value}).Debug("TXT updated")
+			log.WithFields(log.Fields{"subdomain": a.Subdomain, "txt": a.Value}).Info("TXT updated")
 			updStatus = http.StatusOK
 			upd = []byte("{\"txt\": \"" + a.Value + "\"}")
 		}

@@ -19,3 +19,22 @@ The ACME DNS server is configured using a file named `config.cfg`. The applicati
 3.  `./config.cfg`
 
 There are no build-time configuration options available. All configuration is handled through the `config.cfg` file at runtime.
+
+## Descriptive Error Messages
+
+To aid in client-side debugging, the API can be configured to return more descriptive error messages for authentication failures. By default, the server responds with a generic `{"error": "forbidden"}` message for security reasons.
+
+You can enable more detailed error messages by setting the `extended_error_messages` option to `true` in the `[api]` section of your `config.cfg` file:
+
+```ini
+[api]
+# ... other options
+extended_error_messages = true
+```
+
+When this feature is enabled, you will receive specific error messages that can help you diagnose issues with your client's requests. For example:
+
+*   `{"error": "X-Api-User header is missing"}`
+*   `{"error": "invalid username '...': invalid UUID format"}`
+*   `{"error": "user '...' not found"}`
+*   `{"error": "invalid password for user ..."}`

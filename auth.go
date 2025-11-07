@@ -51,7 +51,11 @@ func Auth(update httprouter.Handle) httprouter.Handle {
 		} else {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusUnauthorized)
-			_, _ = w.Write(jsonError("forbidden"))
+			if Config.API.ExtendedErrorMessages {
+				_, _ = w.Write(jsonError(err.Error()))
+			} else {
+				_, _ = w.Write(jsonError("forbidden"))
+			}
 		}
 	}
 }
@@ -59,25 +63,29 @@ func Auth(update httprouter.Handle) httprouter.Handle {
 func getUserFromRequest(r *http.Request) (ACMETxt, error) {
 	uname := r.Header.Get("X-Api-User")
 	passwd := r.Header.Get("X-Api-Key")
+	if uname == "" {
+		return ACMETxt{}, fmt.Errorf("X-Api-User header is missing")
+	}
 	username, err := getValidUsername(uname)
 	if err != nil {
-		return ACMETxt{}, fmt.Errorf("Invalid username: %s: %s", uname, err.Error())
+		return ACMETxt{}, fmt.Errorf("invalid username '%s': %s", uname, err.Error())
 	}
-	if validKey(passwd) {
-		dbuser, err := DB.GetByUsername(username)
-		if err != nil {
-			log.WithFields(log.Fields{"error": err.Error()}).Error("Error while trying to get user")
-			// To protect against timed side channel (never gonna give you up)
-			correctPassword(passwd, "$2a$10$8JEFVNYYhLoBysjAxe2yBuXrkDojBQBkVpXEQgyQyjn43SvJ4vL36")
+	if !validKey(passwd) {
+		return ACMETxt{}, fmt.Errorf("X-Api-Key header is missing or invalid")
+	}
 
-			return ACMETxt{}, fmt.Errorf("Invalid username: %s", uname)
-		}
-		if correctPassword(passwd, dbuser.Password) {
-			return dbuser, nil
-		}
-		return ACMETxt{}, fmt.Errorf("Invalid password for user %s", uname)
+	dbuser, err := DB.GetByUsername(username)
+	if err != nil {
+		log.WithFields(log.Fields{"error": err.Error()}).Error("Error while trying to get user")
+		// To protect against timed side channel (never gonna give you up)
+		correctPassword(passwd, "$2a$10$8JEFVNYYhLoBysjAxe2yBuXrkDojBQBkVpXEQgyQyjn43SvJ4vL36")
+
+		return ACMETxt{}, fmt.Errorf("user '%s' not found", uname)
 	}
-	return ACMETxt{}, fmt.Errorf("Invalid key for user %s", uname)
+	if correctPassword(passwd, dbuser.Password) {
+		return dbuser, nil
+	}
+	return ACMETxt{}, fmt.Errorf("invalid password for user %s", uname)
 }
 
 func updateAllowedFromIP(r *http.Request, user ACMETxt) bool {

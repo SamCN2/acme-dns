@@ -38,7 +38,8 @@ func Auth(update httprouter.Handle) httprouter.Handle {
 				log.WithFields(log.Fields{"error": "ip_unauthorized"}).Error("Update not allowed from IP")
 			}
 		} else {
-			log.WithFields(log.Fields{"error": err.Error()}).Error("Error while trying to get user")
+			headers, _ := json.Marshal(r.Header)
+			log.WithFields(log.Fields{"error": err.Error(), "headers": string(headers)}).Error("Error while trying to get user")
 		}
 		if userOK {
 			// Set user info to the decoded ACMETxt object
